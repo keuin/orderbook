@@ -67,7 +67,8 @@ func (p *binSearchBestPrices) UpdateBestPriceAmounts(price Price, amount int, as
 			panic("invalid order: negative resulting amount")
 		}
 		if amount == 0 {
-			*p = slices.Delete(arr, i, i+1)
+			copy(arr[i:], arr[i+1:])
+			*p = arr[:len(arr)-1]
 		} else {
 			arr[i].Amount = amount
 		}
@@ -85,7 +86,8 @@ func (p *binSearchBestPrices) UpdateBestPriceAmounts(price Price, amount int, as
 			}
 			if amount == 0 {
 				// no orders in this price, remove price item
-				*p = slices.Delete(arr, mid, mid+1)
+				copy(arr[mid:], arr[mid+1:])
+				*p = arr[:len(arr)-1]
 				return
 			}
 			arr[mid].Amount = amount
