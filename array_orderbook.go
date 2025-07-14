@@ -5,7 +5,7 @@ import (
 )
 
 type ArrayOrderBook struct {
-	bids, asks bestPrices
+	bids, asks binSearchBestPrices
 }
 
 func (a *ArrayOrderBook) Snapshot(depth int) Snapshot {
@@ -42,9 +42,9 @@ func (a *ArrayOrderBook) GetAsk(price Price) (amount int) {
 	return a.asks.GetAmount(price)
 }
 
-type bestPrices []PriceAmount
+type binSearchBestPrices []PriceAmount
 
-func (p *bestPrices) GetAmount(price Price) (amount int) {
+func (p *binSearchBestPrices) GetAmount(price Price) (amount int) {
 	i, ok := slices.BinarySearchFunc(*p, price, func(pa PriceAmount, price Price) int {
 		return int(pa.Price - price)
 	})
@@ -54,7 +54,7 @@ func (p *bestPrices) GetAmount(price Price) (amount int) {
 	return (*p)[i].Amount
 }
 
-func (p *bestPrices) UpdateBestPriceAmounts(price Price, amount int, ask bool) {
+func (p *binSearchBestPrices) UpdateBestPriceAmounts(price Price, amount int, ask bool) {
 	const maxLinearSearchCount = 5
 	arr := *p
 	n := min(maxLinearSearchCount, len(arr))
@@ -103,7 +103,7 @@ func (p *bestPrices) UpdateBestPriceAmounts(price Price, amount int, ask bool) {
 		return
 	}
 	if len(arr) == 0 {
-		*p = make(bestPrices, 0, 128)
+		*p = make(binSearchBestPrices, 0, 128)
 		*p = append(*p, PriceAmount{Price: price, Amount: amount})
 		return
 	}
