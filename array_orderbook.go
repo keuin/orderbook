@@ -1,7 +1,6 @@
 package orderbook
 
 import (
-	"fmt"
 	"slices"
 )
 
@@ -28,28 +27,57 @@ func (a *ArrayOrderBook) Snapshot(depth int) Snapshot {
 }
 
 func (a *ArrayOrderBook) Bid(price Price, amount int) {
-	a.bids.updateBestPriceAmounts(price, amount)
+	a.bids.UpdateBestPriceAmounts(price, amount, false)
 }
 
 func (a *ArrayOrderBook) Ask(price Price, amount int) {
-	a.asks.updateBestPriceAmounts(price, amount)
+	a.asks.UpdateBestPriceAmounts(price, amount, true)
+}
+
+func (a *ArrayOrderBook) GetBid(price Price) (amount int) {
+	return a.bids.GetAmount(price)
+}
+
+func (a *ArrayOrderBook) GetAsk(price Price) (amount int) {
+	return a.asks.GetAmount(price)
 }
 
 type bestPrices []PriceAmount
 
-func (p *bestPrices) updateBestPriceAmounts(price Price, amount int) {
+func (p *bestPrices) GetAmount(price Price) (amount int) {
+	i, ok := slices.BinarySearchFunc(*p, price, func(pa PriceAmount, price Price) int {
+		return int(pa.Price - price)
+	})
+	if !ok {
+		return 0
+	}
+	return (*p)[i].Amount
+}
+
+func (p *bestPrices) UpdateBestPriceAmounts(price Price, amount int, ask bool) {
+	const maxLinearSearchCount = 5
 	arr := *p
+	n := min(maxLinearSearchCount, len(arr))
+	for i := 0; i < n; i++ {
+		if arr[i].Price != price {
+			continue
+		}
+		amount += arr[i].Amount
+		if amount < 0 {
+			panic("invalid order: negative resulting amount")
+		}
+		if amount == 0 {
+			*p = slices.Delete(arr, i, i+1)
+		} else {
+			arr[i].Amount = amount
+		}
+		return
+	}
 	i, j := 0, len(arr)-1
 	for i <= j {
 		mid := i + (j-i)/2
 		midVal := arr[mid].Price
-		if price < midVal {
-			// proceed on the left part
-			j = mid - 1
-		} else if price > midVal {
-			// proceed on the right part
-			i = mid + 1
-		} else {
+		if price == midVal {
 			// price found, update in-place
 			amount += arr[mid].Amount
 			if amount < 0 {
@@ -62,16 +90,25 @@ func (p *bestPrices) updateBestPriceAmounts(price Price, amount int) {
 			}
 			arr[mid].Amount = amount
 			return
-		}
-		if arr[i].Price < price && arr[j].Price > price {
-			if j-i != 1 {
-				panic(fmt.Sprintf("invalid state, i=%v, j=%v", i, j))
-			}
-			*p = slices.Insert(arr, i+1, PriceAmount{
-				Price:  price,
-				Amount: amount,
-			})
-			return
+		} else if price < midVal == ask {
+			// proceed on the left part
+			j = mid - 1
+		} else if price > midVal == ask {
+			// proceed on the right part
+			i = mid + 1
 		}
 	}
+	// not found, insert
+	if amount == 0 {
+		return
+	}
+	if len(arr) == 0 {
+		*p = make(bestPrices, 0, 128)
+		*p = append(*p, PriceAmount{Price: price, Amount: amount})
+		return
+	}
+	arr = append(arr, PriceAmount{})
+	copy(arr[i+1:], arr[i:])
+	arr[i] = PriceAmount{Price: price, Amount: amount}
+	*p = arr
 }
