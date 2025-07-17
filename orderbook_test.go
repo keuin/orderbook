@@ -17,6 +17,10 @@ func BenchmarkBTreeOrderBook(b *testing.B) {
 	benchmarkOrderBook(b, NewBTreeOrderBook())
 }
 
+func BenchmarkBTreeRefOrderBook(b *testing.B) {
+	benchmarkOrderBook(b, NewBTreeRefOrderBook())
+}
+
 func BenchmarkBTreeGoogleOrderBook(b *testing.B) {
 	benchmarkOrderBook(b, NewBTreeGoogleOrderBook())
 }
