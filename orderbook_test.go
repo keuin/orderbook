@@ -21,6 +21,10 @@ func BenchmarkBTreeGoogleOrderBook(b *testing.B) {
 	benchmarkOrderBook(b, NewBTreeGoogleOrderBook())
 }
 
+func BenchmarkBTreeGoogleNoGOrderBook(b *testing.B) {
+	benchmarkOrderBook(b, NewBTreeGoogleNoGOrderBook())
+}
+
 func benchmarkOrderBook[T OrderBook](b *testing.B, ob T) {
 	r := rand.NewSource(123456)
 	for i := 0; i < b.N; i++ {
